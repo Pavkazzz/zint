@@ -1,7 +1,7 @@
 /*  vector.c - Creates vector image objects
 
     libzint - the open source barcode library
-    Copyright (C) 2018 Robin Stuart <rstuart114@gmail.com>
+    Copyright (C) 2018 - 2020 Robin Stuart <rstuart114@gmail.com>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <math.h>
 
 #ifdef _MSC_VER
@@ -43,11 +42,11 @@
 
 #define SSET "0123456789ABCDEF"
 
-extern int ps_plot(struct zint_symbol *symbol);
-extern int svg_plot(struct zint_symbol *symbol);
-extern int emf_plot(struct zint_symbol *symbol);
+INTERNAL int ps_plot(struct zint_symbol *symbol);
+INTERNAL int svg_plot(struct zint_symbol *symbol);
+INTERNAL int emf_plot(struct zint_symbol *symbol);
 
-struct zint_vector_rect *vector_plot_create_rect(float x, float y, float width, float height) {
+static struct zint_vector_rect *vector_plot_create_rect(float x, float y, float width, float height) {
     struct zint_vector_rect *rect;
 
     rect = (struct zint_vector_rect*) malloc(sizeof (struct zint_vector_rect));
@@ -63,7 +62,7 @@ struct zint_vector_rect *vector_plot_create_rect(float x, float y, float width, 
     return rect;
 }
 
-int vector_plot_add_rect(struct zint_symbol *symbol, struct zint_vector_rect *rect, struct zint_vector_rect **last_rect) {
+static int vector_plot_add_rect(struct zint_symbol *symbol, struct zint_vector_rect *rect, struct zint_vector_rect **last_rect) {
     if (!rect) return ZINT_ERROR_MEMORY;
     if (*last_rect)
         (*last_rect)->next = rect;
@@ -74,7 +73,7 @@ int vector_plot_add_rect(struct zint_symbol *symbol, struct zint_vector_rect *re
     return 1;
 }
 
-struct zint_vector_hexagon *vector_plot_create_hexagon(float x, float y, float diameter) {
+static struct zint_vector_hexagon *vector_plot_create_hexagon(float x, float y, float diameter) {
     struct zint_vector_hexagon *hexagon;
 
     hexagon = (struct zint_vector_hexagon*) malloc(sizeof (struct zint_vector_hexagon));
@@ -87,7 +86,7 @@ struct zint_vector_hexagon *vector_plot_create_hexagon(float x, float y, float d
     return hexagon;
 }
 
-int vector_plot_add_hexagon(struct zint_symbol *symbol, struct zint_vector_hexagon *hexagon, struct zint_vector_hexagon **last_hexagon) {
+static int vector_plot_add_hexagon(struct zint_symbol *symbol, struct zint_vector_hexagon *hexagon, struct zint_vector_hexagon **last_hexagon) {
     if (!hexagon) return ZINT_ERROR_MEMORY;
     if (*last_hexagon)
         (*last_hexagon)->next = hexagon;
@@ -98,7 +97,7 @@ int vector_plot_add_hexagon(struct zint_symbol *symbol, struct zint_vector_hexag
     return 1;
 }
 
-struct zint_vector_circle *vector_plot_create_circle(float x, float y, float diameter, int colour) {
+static struct zint_vector_circle *vector_plot_create_circle(float x, float y, float diameter, int colour) {
     struct zint_vector_circle *circle;
 
     circle = (struct zint_vector_circle *) malloc(sizeof (struct zint_vector_circle));
@@ -112,7 +111,7 @@ struct zint_vector_circle *vector_plot_create_circle(float x, float y, float dia
     return circle;
 }
 
-int vector_plot_add_circle(struct zint_symbol *symbol, struct zint_vector_circle *circle, struct zint_vector_circle **last_circle) {
+static int vector_plot_add_circle(struct zint_symbol *symbol, struct zint_vector_circle *circle, struct zint_vector_circle **last_circle) {
     if (!circle) return ZINT_ERROR_MEMORY;
     if (*last_circle)
         (*last_circle)->next = circle;
@@ -123,7 +122,7 @@ int vector_plot_add_circle(struct zint_symbol *symbol, struct zint_vector_circle
     return 1;
 }
 
-int vector_plot_add_string(struct zint_symbol *symbol,
+static int vector_plot_add_string(struct zint_symbol *symbol,
         unsigned char *text, float x, float y, float fsize, float width,
         struct zint_vector_string **last_string) {
     struct zint_vector_string *string;
@@ -147,7 +146,7 @@ int vector_plot_add_string(struct zint_symbol *symbol,
     return 1;
 }
 
-void vector_free(struct zint_symbol *symbol) {
+INTERNAL void vector_free(struct zint_symbol *symbol) {
     if (symbol->vector != NULL) {
         struct zint_vector_rect *rect;
         struct zint_vector_hexagon *hex;
@@ -193,13 +192,18 @@ void vector_free(struct zint_symbol *symbol) {
     }
 }
 
-void vector_scale(struct zint_symbol *symbol) {
+static void vector_scale(struct zint_symbol *symbol, int file_type) {
     struct zint_vector_rect *rect;
     struct zint_vector_hexagon *hex;
     struct zint_vector_circle *circle;
     struct zint_vector_string *string;
     float scale = symbol->scale * 2.0f;
 
+    if ((file_type == OUT_EMF_FILE) && (symbol->symbology == BARCODE_MAXICODE)) {
+        // Increase size to overcome limitations in EMF file format
+        scale *= 20;
+    }
+    
     symbol->vector->width *= scale;
     symbol->vector->height *= scale;
 
@@ -239,7 +243,7 @@ void vector_scale(struct zint_symbol *symbol) {
     return;
 }
 
-void vector_reduce_rectangles(struct zint_symbol *symbol) {
+static void vector_reduce_rectangles(struct zint_symbol *symbol) {
     // Looks for vertically aligned rectangles and merges them together
     struct zint_vector_rect *rect, *target, *prev;
 
@@ -266,7 +270,7 @@ void vector_reduce_rectangles(struct zint_symbol *symbol) {
     return;
 }
 
-int plot_vector(struct zint_symbol *symbol, int rotate_angle, int file_type) {
+INTERNAL int plot_vector(struct zint_symbol *symbol, int rotate_angle, int file_type) {
     int error_number;
     struct zint_vector *vector;
     struct zint_vector_rect *rectangle, *rect, *last_rectangle = NULL;
@@ -288,6 +292,9 @@ int plot_vector(struct zint_symbol *symbol, int rotate_angle, int file_type) {
     int this_row;
     int addon_latch = 0;
     struct zint_vector_string *string;
+
+    (void)rotate_angle; /* Not currently implemented */
+
     // Sanity check colours
     to_upper((unsigned char*) symbol->fgcolour);
     to_upper((unsigned char*) symbol->bgcolour);
@@ -787,7 +794,8 @@ int plot_vector(struct zint_symbol *symbol, int rotate_angle, int file_type) {
                     rectangle = vector_plot_create_rect((float)xoffset, (r * row_height) + yoffset - 1, (float)symbol->width, 2.0f);
                     vector_plot_add_rect(symbol, rectangle, &last_rectangle);
                 } else {
-                    rectangle = vector_plot_create_rect(xoffset + 11.0f, (r * row_height) + yoffset - 1, symbol->width - 25.0f, 2.0);
+                    /* Avoid 11-module start and stop chars */
+                    rectangle = vector_plot_create_rect(xoffset + 11, (r * row_height) + yoffset - 1, symbol->width - 22, 2.0);
                     vector_plot_add_rect(symbol, rectangle, &last_rectangle);
                 }
             }
@@ -820,7 +828,7 @@ int plot_vector(struct zint_symbol *symbol, int rotate_angle, int file_type) {
 
     vector_reduce_rectangles(symbol);
 
-    vector_scale(symbol);
+    vector_scale(symbol, file_type);
 
     switch (file_type) {
         case OUT_EPS_FILE:

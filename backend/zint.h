@@ -1,7 +1,7 @@
 /*  zint.h - definitions for libzint
 
     libzint - the open source barcode library
-    Copyright (C) 2009-2019 Robin Stuart <rstuart114@gmail.com>
+    Copyright (C) 2009-2020 Robin Stuart <rstuart114@gmail.com>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -125,7 +125,7 @@ extern "C" {
         unsigned char encoded_data[200][143];
         int row_height[200]; /* Largest symbol is 189 x 189 Han Xin */
         char errtxt[100];
-        char *bitmap;
+        unsigned char *bitmap;
         int bitmap_width;
         int bitmap_height;
         unsigned int bitmap_byte_length;
@@ -136,8 +136,8 @@ extern "C" {
     };
 
 #define ZINT_VERSION_MAJOR      2
-#define ZINT_VERSION_MINOR      6
-#define ZINT_VERSION_RELEASE    7
+#define ZINT_VERSION_MINOR      7
+#define ZINT_VERSION_RELEASE    1
 
     /* Tbarcode 7 codes */
 #define BARCODE_CODE11          1
@@ -263,9 +263,12 @@ extern "C" {
 #define GS1_MODE                2
 #define ESCAPE_MODE             8
 
-// Data Matrix specific options
+// Data Matrix specific options (option_3)
 #define DM_SQUARE               100
 #define DM_DMRE                 101
+
+// QR, Han Xin, Grid Matrix specific options (option_3)
+#define ZINT_FULL_MULTIBYTE     200
 
 // Warning and error conditions
 #define ZINT_WARN_INVALID_OPTION        2
@@ -315,8 +318,6 @@ extern "C" {
     ZINT_EXTERN int ZBarcode_Print(struct zint_symbol *symbol, int rotate_angle);
     ZINT_EXTERN int ZBarcode_Encode_and_Print(struct zint_symbol *symbol, unsigned char *input, int length, int rotate_angle);
     ZINT_EXTERN int ZBarcode_Encode_File_and_Print(struct zint_symbol *symbol, char *filename, int rotate_angle);
-
-    ZINT_EXTERN int ZBarcode_Render(struct zint_symbol *symbol, const float width, const float height);
 
     ZINT_EXTERN int ZBarcode_Buffer(struct zint_symbol *symbol, int rotate_angle);
     ZINT_EXTERN int ZBarcode_Buffer_Vector(struct zint_symbol *symbol, int rotate_angle);

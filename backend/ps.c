@@ -29,6 +29,7 @@
     OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
     SUCH DAMAGE.
  */
+/* vim: set ts=4 sw=4 et : */
 
 #include <locale.h>
 #include <string.h>
@@ -37,7 +38,7 @@
 #include <math.h>
 #include "common.h"
 
-int ps_plot(struct zint_symbol *symbol) {
+INTERNAL int ps_plot(struct zint_symbol *symbol) {
     FILE *feps;
     int fgred, fggrn, fgblu, bgred, bggrn, bgblu;
     float red_ink, green_ink, blue_ink, red_paper, green_paper, blue_paper;
@@ -46,7 +47,7 @@ int ps_plot(struct zint_symbol *symbol) {
     int error_number = 0;
     float ax, ay, bx, by, cx, cy, dx, dy, ex, ey, fx, fy;
     float radius;
-    
+
     struct zint_vector_rect *rect;
     struct zint_vector_hexagon *hex;
     struct zint_vector_circle *circle;
@@ -157,14 +158,15 @@ int ps_plot(struct zint_symbol *symbol) {
     } else {
         fprintf(feps, "%.2f %.2f %.2f %.2f setcmykcolor\n", cyan_ink, magenta_ink, yellow_ink, black_ink);
     }
-    
+
     // Rectangles
     rect = symbol->vector->rectangles;
     while (rect) {
         fprintf(feps, "%.2f %.2f TB %.2f %.2f TR\n", rect->height, (symbol->vector->height - rect->y) - rect->height, rect->x, rect->width);
+        fprintf(feps, "TE\n");
         rect = rect->next;
     }
-    
+
     // Hexagons
     hex = symbol->vector->hexagons;
     while (hex) {
@@ -184,7 +186,7 @@ int ps_plot(struct zint_symbol *symbol) {
         fprintf(feps, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f TH\n", ax, ay, bx, by, cx, cy, dx, dy, ex, ey, fx, fy);
         hex = hex->next;
     }
-    
+
     // Circles
     circle = symbol->vector->circles;
     while (circle) {
@@ -209,7 +211,7 @@ int ps_plot(struct zint_symbol *symbol) {
         }
         circle = circle->next;
     }
-    
+
     // Text
     string = symbol->vector->strings;
     while (string) {
@@ -224,8 +226,8 @@ int ps_plot(struct zint_symbol *symbol) {
         fprintf(feps, "setmatrix\n");
         string = string->next;
     }
-    
-    fprintf(feps, "\nshowpage\n");
+
+    //fprintf(feps, "\nshowpage\n");
 
     if (symbol->output_options & BARCODE_STDOUT) {
         fflush(feps);

@@ -1,6 +1,6 @@
 /*
     libzint - the open source barcode library
-    Copyright (C) 2008-2019 Robin Stuart <rstuart114@gmail.com>
+    Copyright (C) 2019 - 2020 Robin Stuart <rstuart114@gmail.com>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -37,9 +37,7 @@
 #define TESTCOMMON_H
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <zint.h>
 #include "../common.h"
 
 extern int assertionFailed;
@@ -70,7 +68,7 @@ char* testUtilBarcodeName(int symbology);
 char* testUtilErrorName(int error_number);
 char* testUtilInputModeName(int input_mode);
 int testUtilDAFTConvert(const struct zint_symbol* symbol, char* buffer, int buffer_size);
-char* testUtilEscape(char* buffer, char* escaped, int escaped_size);
+char* testUtilEscape(char* buffer, int length, char* escaped, int escaped_size);
 char* testUtilReadCSVField(char* buffer, char* field, int field_size);
 int testUtilSymbolCmp(const struct zint_symbol* a, const struct zint_symbol* b);
 struct zint_vector* testUtilVectorCpy(const struct zint_vector* in);
@@ -81,11 +79,9 @@ int testUtilModulesCmp(const struct zint_symbol* symbol, const char* expected, i
 int testUtilModulesDumpHex(const struct zint_symbol* symbol, char dump[], int dump_size);
 int testUtilExists(char* filename);
 int testUtilCmpPngs(char* file1, char* file2);
+int testUtilCmpTxts(char* txt1, char* txt2);
+int testUtilCmpBins(char* bin1, char* bin2);
 int testUtilCmpSvgs(char* svg1, char* svg2);
 int testUtilCmpEpss(char* eps1, char* eps2);
-int testUtilCmpEmfs(char* emf1, char* emf2);
-int testUtilCmpGifs(char* gif1, char* gif2);
-int testUtilCmpBmps(char* bmp1, char* bmp2);
-int testUtilCmpPcxs(char* pcx1, char* pcx2);
 
 #endif /* TESTCOMMON_H */

@@ -1,7 +1,7 @@
 /*  emf.c - Support for Microsoft Enhanced Metafile Format
 
     libzint - the open source barcode library
-    Copyright (C) 2016-2018 Robin Stuart <rstuart114@gmail.com>
+    Copyright (C) 2016 - 2020 Robin Stuart <rstuart114@gmail.com>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
     OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
     SUCH DAMAGE.
  */
+/* vim: set ts=4 sw=4 et : */
 
 /* Developed according to [MS-EMF] - v20160714, Released July 14, 2016
  * and [MS-WMF] - v20160714, Released July 14, 2016 */
@@ -41,7 +42,7 @@
 #include "common.h"
 #include "emf.h"
 
-int count_rectangles(struct zint_symbol *symbol) {
+static int count_rectangles(struct zint_symbol *symbol) {
     int rectangles = 0;
     struct zint_vector_rect *rect;
 
@@ -54,7 +55,7 @@ int count_rectangles(struct zint_symbol *symbol) {
     return rectangles;
 }
 
-int count_circles(struct zint_symbol *symbol) {
+static int count_circles(struct zint_symbol *symbol) {
     int circles = 0;
     struct zint_vector_circle *circ;
 
@@ -67,7 +68,7 @@ int count_circles(struct zint_symbol *symbol) {
     return circles;
 }
 
-int count_hexagons(struct zint_symbol *symbol) {
+static int count_hexagons(struct zint_symbol *symbol) {
     int hexagons = 0;
     struct zint_vector_hexagon *hex;
 
@@ -80,7 +81,7 @@ int count_hexagons(struct zint_symbol *symbol) {
     return hexagons;
 }
 
-int count_strings(struct zint_symbol *symbol) {
+static int count_strings(struct zint_symbol *symbol) {
     int strings = 0;
     struct zint_vector_string *str;
 
@@ -93,7 +94,7 @@ int count_strings(struct zint_symbol *symbol) {
     return strings;
 }
 
-void utfle_copy(unsigned char *output, unsigned char *input, int length) {
+static void utfle_copy(unsigned char *output, unsigned char *input, int length) {
     int i;
     int o;
 
@@ -117,7 +118,7 @@ void utfle_copy(unsigned char *output, unsigned char *input, int length) {
     } while (i < length);
 }
 
-int bump_up(int input) {
+static int bump_up(int input) {
     /* Strings length must be a multiple of 4 bytes */
     if ((input % 2) == 1) {
         input++;
@@ -125,7 +126,7 @@ int bump_up(int input) {
     return input;
 }
 
-int emf_plot(struct zint_symbol *symbol) {
+INTERNAL int emf_plot(struct zint_symbol *symbol) {
     int i,j;
     FILE *emf_file;
     int fgred, fggrn, fgblu, bgred, bggrn, bgblu;
@@ -180,10 +181,10 @@ int emf_plot(struct zint_symbol *symbol) {
     string_count = count_strings(symbol);
 
 #ifndef _MSC_VER
-    emr_rectangle_t rectangle[rectangle_count];
-    emr_ellipse_t circle[circle_count];
-    emr_polygon_t hexagon[hexagon_count];
-    emr_exttextoutw_t text[string_count];
+    emr_rectangle_t rectangle[rectangle_count ? rectangle_count : 1]; // Avoid sanitize runtime error by making always non-zero
+    emr_ellipse_t circle[circle_count ? circle_count : 1];
+    emr_polygon_t hexagon[hexagon_count ? hexagon_count : 1];
+    emr_exttextoutw_t text[string_count ? string_count: 1];
 #else
     rectangle = (emr_rectangle_t*) _alloca(rectangle_count * sizeof (emr_rectangle_t));
     circle = (emr_ellipse_t*) _alloca(circle_count * sizeof (emr_ellipse_t));
@@ -508,6 +509,7 @@ int emf_plot(struct zint_symbol *symbol) {
         fwrite(&emr_selectobject_font, sizeof (emr_selectobject_t), 1, emf_file);
         fwrite(&text[i], sizeof (emr_exttextoutw_t), 1, emf_file);
         fwrite(this_string[i], bump_up(text[i].w_emr_text.chars + 1) * 2, 1, emf_file);
+        free(this_string[i]);
         for (j = 0; j < bump_up(text[i].w_emr_text.chars + 1); j++) {
             fwrite(&spacing, 4, 1, emf_file);
         }

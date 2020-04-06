@@ -1,6 +1,6 @@
 /*
     libzint - the open source barcode library
-    Copyright (C) 2008-2019 Robin Stuart <rstuart114@gmail.com>
+    Copyright (C) 2008-2020 Robin Stuart <rstuart114@gmail.com>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -34,10 +34,10 @@
 #include "../sjis.h"
 
 // As control convert to Shift JIS using simple table generated from https://www.unicode.org/Public/MAPPINGS/OBSOLETE/EASTASIA/JIS/SHIFTJIS.TXT plus simple processing
-static int sjis_wctomb_zint2(unsigned char* r, unsigned int wc, size_t n)
+static int sjis_wctomb_zint2(unsigned int* r, unsigned int wc)
 {
     if (wc < 0x20 || wc == 0x7F) {
-        r[0] = wc;
+        *r = wc;
         return 1;
     }
     // Shortcut
@@ -45,43 +45,34 @@ static int sjis_wctomb_zint2(unsigned char* r, unsigned int wc, size_t n)
         return 0;
     }
     if (wc >= 0xE000 && wc <= 0xE757) { // PUA mappings, not in SHIFTJIS.TXT
-        unsigned short c;
         if (wc <= 0xE0BB) {
-            c = wc - 0xE000 + 0xF040 + (wc >= 0xE000 + 0x3F);
+            *r = wc - 0xE000 + 0xF040 + (wc >= 0xE000 + 0x3F);
         } else if (wc <= 0xE177) {
-            c = wc - 0xE0BC + 0xF140 + (wc >= 0xE0BC + 0x3F);
+            *r = wc - 0xE0BC + 0xF140 + (wc >= 0xE0BC + 0x3F);
         } else if (wc <= 0xE233) {
-            c = wc - 0xE178 + 0xF240 + (wc >= 0xE178 + 0x3F);
+            *r = wc - 0xE178 + 0xF240 + (wc >= 0xE178 + 0x3F);
         } else if (wc <= 0xE2EF) {
-            c = wc - 0xE234 + 0xF340 + (wc >= 0xE234 + 0x3F);
+            *r = wc - 0xE234 + 0xF340 + (wc >= 0xE234 + 0x3F);
         } else if (wc <= 0xE3AB) {
-            c = wc - 0xE2F0 + 0xF440 + (wc >= 0xE2F0 + 0x3F);
+            *r = wc - 0xE2F0 + 0xF440 + (wc >= 0xE2F0 + 0x3F);
         } else if (wc <= 0xE467) {
-            c = wc - 0xE3AC + 0xF540 + (wc >= 0xE3AC + 0x3F);
+            *r = wc - 0xE3AC + 0xF540 + (wc >= 0xE3AC + 0x3F);
         } else if (wc <= 0xE523) {
-            c = wc - 0xE468 + 0xF640 + (wc >= 0xE468 + 0x3F);
+            *r = wc - 0xE468 + 0xF640 + (wc >= 0xE468 + 0x3F);
         } else if (wc <= 0xE5DF) {
-            c = wc - 0xE524 + 0xF740 + (wc >= 0xE524 + 0x3F);
+            *r = wc - 0xE524 + 0xF740 + (wc >= 0xE524 + 0x3F);
         } else if (wc <= 0xE69B) {
-            c = wc - 0xE5E0 + 0xF840 + (wc >= 0xE5E0 + 0x3F);
+            *r = wc - 0xE5E0 + 0xF840 + (wc >= 0xE5E0 + 0x3F);
         } else {
-            c = wc - 0xE69C + 0xF940 + (wc >= 0xE69C + 0x3F);
+            *r = wc - 0xE69C + 0xF940 + (wc >= 0xE69C + 0x3F);
         }
-        r[0] = (c >> 8);
-        r[1] = c & 0xFF;
         return 2;
     }
-    int tab_length = sizeof(test_sjis_tab) / sizeof(unsigned short);
-    for (int i = 0; i < tab_length; i += 2) {
+    int tab_length = sizeof(test_sjis_tab) / sizeof(unsigned int);
+    for (int i = test_sjis_tab_ind[wc >> 12]; i < tab_length; i += 2) {
         if (test_sjis_tab[i + 1] == wc) {
-            unsigned short c = test_sjis_tab[i];
-            if (c < 0xFF) {
-                r[0] = c;
-                return 1;
-            }
-            r[0] = (c >> 8);
-            r[1] = c & 0xFF;
-            return 2;
+            *r = test_sjis_tab[i];
+            return *r > 0xFF ? 2 : 1;
         }
     }
     return 0;
@@ -92,18 +83,15 @@ static void test_sjis_wctomb_zint(void)
     testStart("");
 
     int ret, ret2;
-    unsigned char buf[2], buf2[2];
     unsigned int val, val2;
 
     for (unsigned int i = 0; i < 0xFFFE; i++) {
         if (i >= 0xD800 && i <= 0xDFFF) { // UTF-16 surrogates
             continue;
         }
-        buf[0] = buf[1] = buf2[0] = buf2[1] = 0;
-        ret = sjis_wctomb_zint(buf, i, 2);
-        val = ret == 1 ? buf[0] : (buf[0] << 8) | buf[1];
-        ret2 = sjis_wctomb_zint2(buf2, i, 2);
-        val2 = ret2 == 1 ? buf2[0] : (buf2[0] << 8) | buf2[1];
+        val = val2 = 0;
+        ret = sjis_wctomb_zint(&val, i);
+        ret2 = sjis_wctomb_zint2(&val2, i);
         if (i == 0xFF3C) { // Extra mapping full-width reverse solidus U+FF3C to 0x815F, duplicate of U+005C (backslash)
             assert_equal(ret, 2, "i:%d 0x%04X ret %d != 2, val 0x%04X\n", i, i, ret, val);
             assert_equal(val, 0x815F, "i:%d 0x%04X val 0x%04X != 0x815F\n", i, i, val);
@@ -182,6 +170,7 @@ static void test_sjis_utf8tosb(void)
     int ret;
     struct item {
         int eci;
+        int full_multibyte;
         unsigned char* data;
         int length;
         int ret;
@@ -200,13 +189,20 @@ static void test_sjis_utf8tosb(void)
     // À U+00C0 in ISO 8859-1 0xC0, outside first byte range and 0xEBxx second byte range
     // s/\/\*[ 0-9]*\*\//\=printf("\/*%3d*\/", line(".") - line("'<"))
     struct item data[] = {
-        /*  0*/ { 3, "é", -1, 0, 1, { 0xE9 }, "" },
-        /*  1*/ { 3, "β", -1, ZINT_ERROR_INVALID_DATA, -1, {}, "" },
-        /*  2*/ { 9, "β", -1, 0, 1, { 0xE2 }, "" },
-        /*  3*/ { 3, "¥", -1, 0, 1, { 0xA5 }, "" },
-        /*  4*/ { 3, "éa", -1, 0, 1, { 0xE961 }, "In QR Kanji mode range" },
-        /*  5*/ { 3, "éaúbàcëdìeµ", -1, 0, 8, { 0xE961, 0xFA, 0x62, 0xE063, 0xEB64, 0xEC, 0x65, 0xB5 }, "" },
-        /*  6*/ { 3, "ëÀ", -1, 0, 2, { 0xEB, 0xC0 }, "Outside QR Kanji mode range" },
+        /*  0*/ { 3, 0, "é", -1, 0, 1, { 0xE9 }, "" },
+        /*  1*/ { 3, 1, "é", -1, 0, 1, { 0xE9 }, "" },
+        /*  2*/ { 3, 0, "β", -1, ZINT_ERROR_INVALID_DATA, -1, {}, "" },
+        /*  3*/ { 3, 1, "β", -1, ZINT_ERROR_INVALID_DATA, -1, {}, "" },
+        /*  4*/ { 9, 0, "β", -1, 0, 1, { 0xE2 }, "" },
+        /*  5*/ { 9, 1, "β", -1, 0, 1, { 0xE2 }, "" },
+        /*  6*/ { 3, 0, "¥", -1, 0, 1, { 0xA5 }, "" },
+        /*  7*/ { 3, 1, "¥", -1, 0, 1, { 0xA5 }, "" },
+        /*  8*/ { 3, 0, "éa", -1, 0, 2, { 0xE9, 0x61 }, "Not full multibyte" },
+        /*  9*/ { 3, 1, "éa", -1, 0, 1, { 0xE961 }, "In QR Kanji mode range" },
+        /* 10*/ { 3, 0, "éaúbàcëdìeµ", -1, 0, 11, { 0xE9, 0x61, 0xFA, 0x62, 0xE0, 0x63, 0xEB, 0x64, 0xEC, 0x65, 0xB5 }, "" },
+        /* 11*/ { 3, 1, "éaúbàcëdìeµ", -1, 0, 8, { 0xE961, 0xFA, 0x62, 0xE063, 0xEB64, 0xEC, 0x65, 0xB5 }, "" },
+        /* 12*/ { 3, 0, "ëÀ", -1, 0, 2, { 0xEB, 0xC0 }, "Not full multibyte" },
+        /* 13*/ { 3, 1, "ëÀ", -1, 0, 2, { 0xEB, 0xC0 }, "Outside QR Kanji mode range" },
     };
 
     int data_size = sizeof(data) / sizeof(struct item);
@@ -218,7 +214,7 @@ static void test_sjis_utf8tosb(void)
         int length = data[i].length == -1 ? strlen(data[i].data) : data[i].length;
         size_t ret_length = length;
 
-        ret = sjis_utf8tosb(data[i].eci, data[i].data, &ret_length, jisdata);
+        ret = sjis_utf8tosb(data[i].eci, data[i].data, &ret_length, jisdata, data[i].full_multibyte);
         assert_equal(ret, data[i].ret, "i:%d ret %d != %d\n", i, ret, data[i].ret);
         if (ret == 0) {
             assert_equal(ret_length, data[i].ret_length, "i:%d ret_length %zu != %zu\n", i, ret_length, data[i].ret_length);
@@ -237,6 +233,7 @@ static void test_sjis_cpy(void)
 
     int ret;
     struct item {
+        int full_multibyte;
         unsigned char* data;
         int length;
         int ret;
@@ -246,11 +243,15 @@ static void test_sjis_cpy(void)
     };
     // s/\/\*[ 0-9]*\*\//\=printf("\/*%3d*\/", line(".") - line("'<"))
     struct item data[] = {
-        /*  0*/ { "\351", -1, 0, 1, { 0xE9 }, "In QR Kanji mode first-byte range but only one byte" },
-        /*  1*/ { "\351\141", -1, 0, 1, { 0xE961 }, "In QR Kanji mode range" },
-        /*  0*/ { "\201", -1, 0, 1, { 0x81 }, "In QR Kanji mode first-byte range but only one byte" },
-        /*  0*/ { "\201\141", -1, 0, 1, { 0x8161 }, "In QR Kanji mode range" },
-        /*  0*/ { "\201\077\201\100\237\374\237\375\340\077\340\100\353\277\353\300", -1, 0, 12, { 0x81, 0x3F, 0x8140, 0x9FFC, 0x9F, 0xFD, 0xE0, 0x3F, 0xE040, 0xEBBF, 0xEB, 0xC0 }, "" },
+        /*  0*/ { 0, "\351", -1, 0, 1, { 0xE9 }, "Not full multibyte" },
+        /*  1*/ { 1, "\351", -1, 0, 1, { 0xE9 }, "In QR Kanji mode first-byte range but only one byte" },
+        /*  2*/ { 0, "\351\141", -1, 0, 2, { 0xE9, 0x61 }, "Not full multibyte" },
+        /*  3*/ { 1, "\351\141", -1, 0, 1, { 0xE961 }, "In QR Kanji mode range" },
+        /*  4*/ { 1, "\201", -1, 0, 1, { 0x81 }, "In QR Kanji mode first-byte range but only one byte" },
+        /*  5*/ { 0, "\201\141", -1, 0, 2, { 0x81, 0x61 }, "Not full multibyte" },
+        /*  6*/ { 1, "\201\141", -1, 0, 1, { 0x8161 }, "In QR Kanji mode range" },
+        /*  7*/ { 0, "\201\077\201\100\237\374\237\375\340\077\340\100\353\277\353\300", -1, 0, 16, { 0x81, 0x3F, 0x81, 0x40, 0x9F, 0xFC, 0x9F, 0xFD, 0xE0, 0x3F, 0xE0, 0x40, 0xEB, 0xBF, 0xEB, 0xC0 }, "" },
+        /*  8*/ { 1, "\201\077\201\100\237\374\237\375\340\077\340\100\353\277\353\300", -1, 0, 12, { 0x81, 0x3F, 0x8140, 0x9FFC, 0x9F, 0xFD, 0xE0, 0x3F, 0xE040, 0xEBBF, 0xEB, 0xC0 }, "" },
     };
 
     int data_size = sizeof(data) / sizeof(struct item);
@@ -262,7 +263,7 @@ static void test_sjis_cpy(void)
         int length = data[i].length == -1 ? strlen(data[i].data) : data[i].length;
         size_t ret_length = length;
 
-        sjis_cpy(data[i].data, &ret_length, jisdata);
+        sjis_cpy(data[i].data, &ret_length, jisdata, data[i].full_multibyte);
         assert_equal(ret_length, data[i].ret_length, "i:%d ret_length %zu != %zu\n", i, ret_length, data[i].ret_length);
         for (int j = 0; j < ret_length; j++) {
             assert_equal(jisdata[j], data[i].expected_jisdata[j], "i:%d jisdata[%d] %04X != %04X\n", i, j, jisdata[j], data[i].expected_jisdata[j]);
