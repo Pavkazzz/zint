@@ -213,13 +213,13 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
             return ZINT_ERROR_INVALID_DATA;
         }
     }
-    
+
     strcpy(ai_string, "");
-    
+
     // Check for valid AI values and data lengths according to GS1 General
     // Specification Release 19, January 2019
     for (i = 0; i < ai_count; i++) {
-        
+
         error_latch = 2;
         switch (ai_value[i]) {
             // Length 2 Fixed
@@ -230,7 +230,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 3 Fixed
             case 422: // ORIGIN
             case 424: // COUNTRY PROCESS
@@ -241,7 +241,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 4 Fixed
             case 7040: // UIC+EXT
             case 8111: // POINTS
@@ -251,7 +251,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 6 Fixed
             case 11: // PROD DATE
             case 12: // DUE DATE
@@ -267,7 +267,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 10 Fixed
             case 7003: // EXPIRY TIME
                 if (data_length[i] != 10) {
@@ -276,7 +276,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 13 Fixed
             case 410: // SHIP TO LOC
             case 411: // BILL TO
@@ -293,7 +293,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 14 Fixed
             case 1: // GTIN
             case 2: // CONTENT
@@ -304,7 +304,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 17 Fixed
             case 402: // GSIN
                 if (data_length[i] != 17) {
@@ -313,7 +313,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 18 Fixed
             case 0: // SSCC
             case 8006: // ITIP
@@ -326,7 +326,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 2 Max
             case 7010: // PROD METHOD
                 if (data_length[i] > 2) {
@@ -335,7 +335,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 3 Max
             case 427: // ORIGIN SUBDIVISION
             case 7008: // AQUATIC SPECIES
@@ -345,7 +345,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 4 Max
             case 7004: // ACTIVE POTENCY
                 if (data_length[i] > 4) {
@@ -354,7 +354,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 6 Max
             case 242: // MTO VARIANT
                 if (data_length[i] > 6) {
@@ -363,7 +363,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 8 Max
             case 30: // VAR COUNT
             case 37: // COUNT
@@ -373,7 +373,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 10 Max
             case 7009: // FISHING GEAR TYPE
             case 8019: // SRIN
@@ -383,7 +383,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 12 Max
             case 7005: // CATCH AREA
             case 8011: // CPID SERIAL
@@ -393,7 +393,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 20 Max
             case 10: // BATCH/LOT
             case 21: // SERIAL
@@ -418,7 +418,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 25 Max
             case 8020: // REF NO
                 if (data_length[i] > 25) {
@@ -427,7 +427,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 28 Max
             case 235: // TPX
                 if (data_length[i] > 28) {
@@ -457,7 +457,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 34 Max
             case 8007: // IBAN
                 if (data_length[i] > 34) {
@@ -466,7 +466,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 50 Max
             case 8009: // OPTSEN
                 if (data_length[i] > 50) {
@@ -475,7 +475,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
             // Length 70 Max
             case 8110: // Coupon code
             case 8112: // Paperless coupon code
@@ -486,9 +486,9 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                     error_latch = 0;
                 }
                 break;
-                
+
         }
-        
+
         if (ai_value[i] == 253) { // GDTI
             if ((data_length[i] < 14) || (data_length[i] > 30)) {
                 error_latch = 1;
@@ -496,15 +496,15 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if (ai_value[i] == 255) { // GCN
-            if ((data_length[i] < 13) || (data_length[i] > 25)) {
+            if ((data_length[i] < 12) || (data_length[i] > 25)) {
                 error_latch = 1;
             } else {
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3100) && (ai_value[i] <= 3169)) {
             if (data_length[i] != 6) {
                 error_latch = 1;
@@ -512,7 +512,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3200) && (ai_value[i] <= 3379)) {
             if (data_length[i] != 6) {
                 error_latch = 1;
@@ -520,7 +520,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3400) && (ai_value[i] <= 3579)) {
             if (data_length[i] != 6) {
                 error_latch = 1;
@@ -528,7 +528,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3600) && (ai_value[i] <= 3699)) {
             if (data_length[i] != 6) {
                 error_latch = 1;
@@ -536,7 +536,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3900) && (ai_value[i] <= 3909)) { // AMOUNT
             if (data_length[i] > 15) {
                 error_latch = 1;
@@ -544,7 +544,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3910) && (ai_value[i] <= 3919)) { // AMOUNT
             if ((data_length[i] < 4) || (data_length[i] > 18)) {
                 error_latch = 1;
@@ -552,7 +552,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3920) && (ai_value[i] <= 3929)) { // PRICE
             if (data_length[i] > 15) {
                 error_latch = 1;
@@ -560,7 +560,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3930) && (ai_value[i] <= 3939)) { // PRICE
             if ((data_length[i] < 4) || (data_length[i] > 18)) {
                 error_latch = 1;
@@ -568,7 +568,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 3940) && (ai_value[i] <= 3949)) { // PRCNT OFF
             if (data_length[i] != 4) {
                 error_latch = 1;
@@ -576,7 +576,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if (ai_value[i] == 421) { // SHIP TO POST
             if ((data_length[i] < 4) || (data_length[i] > 12)) {
                 error_latch = 1;
@@ -584,7 +584,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] == 423) || (ai_value[i] == 425)) {
             // COUNTRY INITIAL PROCESS || COUNTRY DISASSEMBLY
             if ((data_length[i] < 4) || (data_length[i] > 15)) {
@@ -593,7 +593,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if (ai_value[i] == 7007) { // HARVEST DATE
             if ((data_length[i] != 6) && (data_length[i] != 12)) {
                 error_latch = 1;
@@ -601,7 +601,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 7030) && (ai_value[i] <= 7039)) { // PROCESSOR #
             if ((data_length[i] < 4) || (data_length[i] > 30)) {
                 error_latch = 1;
@@ -609,7 +609,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 7230) && (ai_value[i] <= 7239)) { // CERT #
             if ((data_length[i] < 3) || (data_length[i] > 30)) {
                 error_latch = 1;
@@ -617,7 +617,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if (ai_value[i] == 8003) { // GRAI
             if ((data_length[i] < 15) || (data_length[i] > 30)) {
                 error_latch = 1;
@@ -625,7 +625,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if (ai_value[i] == 8008) { // PROD TIME
             if ((data_length[i] != 8) && (data_length[i] != 10) && (data_length[i] != 12)) {
                 error_latch = 1;
@@ -633,7 +633,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 error_latch = 0;
             }
         }
-        
+
         if ((ai_value[i] >= 91) && (ai_value[i] <= 99)) { // INTERNAL
             if (data_length[i] > 90) {
                 error_latch = 1;
