@@ -440,7 +440,8 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
                 }
                 break;
 
-            // Length 25 Max
+            // Length 25 Max}
+            case 202:
             case 8020: // REF NO
                 if (data_length[i] > 25) {
                     error_latch = 1;
