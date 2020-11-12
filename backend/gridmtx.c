@@ -34,7 +34,6 @@
    AIM Global Document Number AIMD014 Rev. 1.63 Revised 9 Dec 2008 */
 
 #include <stdio.h>
-#include <string.h>
 #ifdef _MSC_VER
 #include <malloc.h>
 #endif
@@ -222,7 +221,7 @@ static void gm_cur_cost(unsigned int state[], const unsigned int gbdata[], const
 
 /* Calculate optimized encoding modes */
 static void define_mode(char* mode, const unsigned int gbdata[], const size_t length, const int debug) {
-    static const char mode_types[] = { GM_CHINESE, GM_NUMBER, GM_LOWER, GM_UPPER, GM_MIXED, GM_BYTE }; /* Must be in same order as GM_H etc */
+    static const char mode_types[] = { GM_CHINESE, GM_NUMBER, GM_LOWER, GM_UPPER, GM_MIXED, GM_BYTE, '\0' }; /* Must be in same order as GM_H etc */
     unsigned int state[3] = { 0 /*numeral_end*/, 0 /*numeral_cost*/, 0 /*byte_count*/ };
 
     pn_define_mode(mode, gbdata, length, debug, state, mode_types, GM_NUM_MODES, gm_head_costs, gm_switch_cost, gm_eod_cost, gm_cur_cost);
@@ -230,6 +229,8 @@ static void define_mode(char* mode, const unsigned int gbdata[], const size_t le
 
 /* Add the length indicator for byte encoded blocks */
 static void add_byte_count(char binary[], const size_t byte_count_posn, const int byte_count) {
+    /* AIMD014 6.3.7: "Let L be the number of bytes of input data to be encoded in the 8-bit binary data set.
+     * First output (L-1) as a 9-bit binary prefix to record the number of bytes..." */
     bin_append_posn(byte_count - 1, 9, binary, byte_count_posn);
 }
 
@@ -275,7 +276,6 @@ static int gm_encode(unsigned int gbdata[], const size_t length, char binary[], 
 
     sp = 0;
     current_mode = 0;
-    last_mode = 0;
     number_pad_posn = 0;
 
     if (reader) {

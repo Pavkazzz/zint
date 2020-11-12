@@ -1,7 +1,7 @@
 /***************************************************************************
  *   Copyright (C) 2008 by BogDan Vatra                                    *
  *   bogdan@licentia.eu                                                    *
- *   Copyright (C) 2010-2017 Robin Stuart                                  *
+ *   Copyright (C) 2010-2020 Robin Stuart                                  *
  *                                                                         *
  *   This program is free software: you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -14,36 +14,49 @@
  *   You should have received a copy of the GNU General Public License     *
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>. *
  ***************************************************************************/
+/* vim: set ts=4 sw=4 et : */
 
+//#include <QDebug>
 #include "qzint.h"
 #include <stdio.h>
 #include <math.h>
 #include <QFontMetrics>
+/* the following include was necessary to compile with QT 5.18 on Windows */
+/* QT 8.7 did not require it. */
+#include <QPainterPath>
 
 namespace Zint {
-    static const char* fontstyle = "Arial";
-    static const int fontPixelSizeSmall = 8;
-    static const int fontPixelSizeLarge = 12;
+    static const char *fontStyle = "Helvetica";
+    static const char *fontStyleError = "Helvetica";
+    static const int fontSizeError = 14; /* Point size */
 
     QZint::QZint() {
         m_symbol = BARCODE_CODE128;
         m_height = 0;
-        m_border = NO_BORDER;
+        m_borderType = 0;
         m_borderWidth = 0;
+        m_fontSetting = 0;
         m_securityLevel = -1;
         m_fgColor = Qt::black;
         m_bgColor = Qt::white;
-        m_zintSymbol = 0;
+        m_cmyk = false;
+        m_zintSymbol = NULL;
         m_error = 0;
-        m_input_mode = UNICODE_MODE + ESCAPE_MODE;
-        m_scale = 1.0;
+        m_input_mode = UNICODE_MODE;
+        m_scale = 1.0f;
         m_option_3 = 0;
-        m_hidetext = 0;
-        m_dot_size = 4.0 / 5.0;
+        m_show_hrt = 1;
+        m_eci = 0;
+        m_dotty = false;
+        m_dot_size = 4.0f / 5.0f;
         target_size_horiz = 0;
         target_size_vert = 0;
-        m_width = 0;
+        m_option_2 = 0;
         m_whitespace = 0;
+        m_gssep = false;
+        m_reader_init = false;
+        m_rotate_angle = 0;
+        m_debug = false;
     }
 
     QZint::~QZint() {
@@ -51,43 +64,65 @@ namespace Zint {
             ZBarcode_Delete(m_zintSymbol);
     }
 
-    void QZint::encode() {
+    void QZint::resetSymbol() {
         if (m_zintSymbol)
             ZBarcode_Delete(m_zintSymbol);
 
         m_lastError.clear();
         m_zintSymbol = ZBarcode_Create();
-        m_zintSymbol->output_options = m_border;
+        m_zintSymbol->output_options |= m_borderType | m_fontSetting;
         m_zintSymbol->symbology = m_symbol;
         m_zintSymbol->height = m_height;
         m_zintSymbol->whitespace_width = m_whitespace;
         m_zintSymbol->border_width = m_borderWidth;
         m_zintSymbol->option_1 = m_securityLevel;
         m_zintSymbol->input_mode = m_input_mode;
-        m_zintSymbol->option_2 = m_width;
-        m_zintSymbol->dot_size = m_dot_size;
-        if (m_hidetext) {
-            m_zintSymbol->show_hrt = 0;
-        } else {
-            m_zintSymbol->show_hrt = 1;
+        m_zintSymbol->option_2 = m_option_2;
+        if (m_dotty) {
+            m_zintSymbol->output_options |= BARCODE_DOTTY_MODE;
         }
-		m_zintSymbol->option_3 = m_option_3;
+        m_zintSymbol->dot_size = m_dot_size;
+        m_zintSymbol->show_hrt = m_show_hrt ? 1 : 0;
+        m_zintSymbol->eci = m_eci;
+        m_zintSymbol->option_3 = m_option_3;
+        m_zintSymbol->scale = m_scale;
+        if (m_gssep) {
+            m_zintSymbol->output_options |= GS1_GS_SEPARATOR;
+        }
+        if (m_reader_init) {
+            m_zintSymbol->output_options |= READER_INIT;
+        }
+        if (m_debug) {
+            m_zintSymbol->debug |= ZINT_DEBUG_PRINT;
+        }
+
+        strcpy(m_zintSymbol->fgcolour, m_fgColor.name().toLatin1().right(6));
+        if (m_fgColor.alpha() != 0xff) {
+            strcat(m_zintSymbol->fgcolour, m_fgColor.name(QColor::HexArgb).toLatin1().mid(1,2));
+        }
+        strcpy(m_zintSymbol->bgcolour, m_bgColor.name().toLatin1().right(6));
+        if (m_bgColor.alpha() != 0xff) {
+            strcat(m_zintSymbol->bgcolour, m_bgColor.name(QColor::HexArgb).toLatin1().mid(1,2));
+        }
+        if (m_cmyk) {
+            m_zintSymbol->output_options |= CMYK_COLOUR;
+        }
+        strcpy(m_zintSymbol->primary, m_primaryMessage.toLatin1().left(127));
+    }
+
+    void QZint::encode() {
+        resetSymbol();
         QByteArray bstr = m_text.toUtf8();
-        QByteArray pstr = m_primaryMessage.left(99).toLatin1();
-        strcpy(m_zintSymbol->primary, pstr.data());
-        m_error = ZBarcode_Encode_and_Buffer_Vector(m_zintSymbol, (unsigned char*) bstr.data(), bstr.length(), 0);
+        m_error = ZBarcode_Encode_and_Buffer_Vector(m_zintSymbol, (unsigned char *) bstr.data(), bstr.length(), 0); /* Note do our own rotation */
         m_lastError = m_zintSymbol->errtxt;
 
-        switch (m_zintSymbol->output_options) {
-            case 0: m_border = NO_BORDER;
-                break;
-            case 2: m_border = BIND;
-                break;
-            case 4: m_border = BOX;
-                break;
+        if (m_error < ZINT_ERROR) {
+            m_borderType = m_zintSymbol->output_options & (BARCODE_BIND | BARCODE_BOX);
+            m_height = m_zintSymbol->height;
+            m_borderWidth = m_zintSymbol->border_width;
+            m_whitespace = m_zintSymbol->whitespace_width;
+            emit encoded();
         }
-        m_borderWidth = m_zintSymbol->border_width;
-        m_whitespace = m_zintSymbol->whitespace_width;
     }
 
     int QZint::symbol() const {
@@ -96,6 +131,10 @@ namespace Zint {
 
     void QZint::setSymbol(int symbol) {
         m_symbol = symbol;
+    }
+
+    int QZint::inputMode() const {
+        return m_input_mode;
     }
 
     void QZint::setInputMode(int input_mode) {
@@ -110,11 +149,6 @@ namespace Zint {
         m_text = text;
     }
 
-    void QZint::setTargetSize(int width, int height) {
-        target_size_horiz = width;
-        target_size_vert = height;
-    }
-
     QString QZint::primaryMessage() const {
         return m_primaryMessage;
     }
@@ -123,12 +157,20 @@ namespace Zint {
         m_primaryMessage = primaryMessage;
     }
 
+    int QZint::height() const {
+        return m_height;
+    }
+
     void QZint::setHeight(int height) {
         m_height = height;
     }
 
-    void QZint::setWidth(int width) {
-        m_width = width;
+    int QZint::option2() const {
+        return m_option_2;
+    }
+
+    void QZint::setOption2(int option) {
+        m_option_2 = option;
     }
 
     void QZint::setOption3(int option) {
@@ -141,6 +183,14 @@ namespace Zint {
 
     void QZint::setScale(float scale) {
         m_scale = scale;
+    }
+
+    bool QZint::dotty() const {
+        return m_dotty;
+    }
+
+    void QZint::setDotty(bool dotty) {
+        m_dotty = dotty;
     }
 
     void QZint::setDotSize(float dot_size) {
@@ -163,12 +213,22 @@ namespace Zint {
         m_bgColor = bgColor;
     }
 
-    QZint::BorderType QZint::borderType() const {
-        return m_border;
+    void QZint::setCMYK(bool cmyk) {
+        m_cmyk = cmyk;
     }
 
-    void QZint::setBorderType(BorderType border) {
-        m_border = border;
+    int QZint::borderType() const {
+        return m_borderType;
+    }
+
+    void QZint::setBorderType(int borderTypeIndex) {
+        if (borderTypeIndex == 1) {
+            m_borderType = BARCODE_BIND;
+        } else if (borderTypeIndex == 2) {
+            m_borderType = BARCODE_BOX;
+        } else {
+            m_borderType = 0;
+        }
     }
 
     int QZint::borderWidth() const {
@@ -192,14 +252,6 @@ namespace Zint {
     void QZint::setSecurityLevel(int securityLevel) {
         m_securityLevel = securityLevel;
     }
-    
-    int QZint::getError() {
-        return m_error;
-    }
-
-    QString QZint::error_message() const {
-        return m_lastError;
-    }
 
     int QZint::mode() const {
         return m_securityLevel;
@@ -209,50 +261,148 @@ namespace Zint {
         m_securityLevel = securityLevel;
     }
 
-    void QZint::setHideText(bool hide) {
-        m_hidetext = hide;
+    void QZint::setFontSetting(int fontSettingIndex) {
+        if (fontSettingIndex == 1) {
+            m_fontSetting = BOLD_TEXT;
+        } else if (fontSettingIndex == 2) {
+            m_fontSetting = SMALL_TEXT;
+        } else if (fontSettingIndex == 3) {
+            m_fontSetting = SMALL_TEXT | BOLD_TEXT;
+        } else {
+            m_fontSetting = 0;
+        }
+    }
+
+    void QZint::setShowText(bool show) {
+        m_show_hrt = show;
+    }
+
+    void QZint::setTargetSize(int width, int height) {
+        target_size_horiz = width;
+        target_size_vert = height;
+    }
+
+    void QZint::setGSSep(bool gssep) {
+        m_gssep = gssep;
+    }
+
+    int QZint::rotateAngle() const {
+        return m_rotate_angle;
+    }
+
+    void QZint::setRotateAngle(int rotateIndex) {
+        if (rotateIndex == 1) {
+            m_rotate_angle = 90;
+        } else if (rotateIndex == 2) {
+            m_rotate_angle = 180;
+        } else if (rotateIndex == 3) {
+            m_rotate_angle = 270;
+        } else {
+            m_rotate_angle = 0;
+        }
+    }
+
+    void QZint::setECI(int ECIIndex) {
+        if (ECIIndex >= 1 && ECIIndex <= 11) {
+            m_eci = ECIIndex + 2;
+        } else if (ECIIndex >= 12 && ECIIndex <= 15) {
+            m_eci = ECIIndex + 3;
+        } else if (ECIIndex >= 16 && ECIIndex <= 26) {
+            m_eci = ECIIndex + 4;
+        } else if (ECIIndex == 27) {
+            m_eci = 899; /* 8-bit binary data TODO: support */
+        } else {
+            m_eci = 0;
+        }
+    }
+
+    void QZint::setReaderInit(bool reader_init) {
+        m_reader_init = reader_init;
+    }
+
+    void QZint::setDebug(bool debug) {
+        m_debug = debug;
+    }
+
+    bool QZint::hasHRT(int symbology) const {
+        return ZBarcode_Cap(symbology ? symbology : m_symbol, ZINT_CAP_HRT);
+    }
+
+    bool QZint::isExtendable(int symbology) const {
+        return ZBarcode_Cap(symbology ? symbology : m_symbol, ZINT_CAP_EXTENDABLE);
+    }
+
+    bool QZint::supportsECI(int symbology) const {
+        return ZBarcode_Cap(symbology ? symbology : m_symbol, ZINT_CAP_ECI);
+    }
+
+    bool QZint::isFixedRatio(int symbology) const {
+        return ZBarcode_Cap(symbology ? symbology : m_symbol, ZINT_CAP_FIXED_RATIO);
+    }
+
+    bool QZint::isDotty(int symbology) const {
+        return ZBarcode_Cap(symbology ? symbology : m_symbol, ZINT_CAP_DOTTY);
+    }
+
+    bool QZint::supportsReaderInit(int symbology) const {
+        return ZBarcode_Cap(symbology ? symbology : m_symbol, ZINT_CAP_READER_INIT);
+    }
+
+    int QZint::getError() const {
+        return m_error;
+    }
+
+    QString QZint::error_message() const {
+        return m_lastError;
+    }
+
+    const QString & QZint::lastError() const {
+        return m_lastError;
+    }
+
+    bool QZint::hasErrors() const {
+        return m_lastError.length();
     }
 
     bool QZint::save_to_file(QString filename) {
-        if (m_zintSymbol)
-            ZBarcode_Delete(m_zintSymbol);
-
-        QString fg_colour_hash = m_fgColor.name();
-        QString bg_colour_hash = m_bgColor.name();
-
-        m_lastError.clear();
-        m_zintSymbol = ZBarcode_Create();
-        m_zintSymbol->output_options = m_border;
-        m_zintSymbol->symbology = m_symbol;
-        m_zintSymbol->height = m_height;
-        m_zintSymbol->whitespace_width = m_whitespace;
-        m_zintSymbol->border_width = m_borderWidth;
-        m_zintSymbol->option_1 = m_securityLevel;
-        m_zintSymbol->input_mode = m_input_mode;
-        m_zintSymbol->option_2 = m_width;
-        m_zintSymbol->dot_size = m_dot_size;
-        if (m_hidetext) {
-            m_zintSymbol->show_hrt = 0;
-        } else {
-            m_zintSymbol->show_hrt = 1;
-        }
-		m_zintSymbol->option_3 = m_option_3;
-        m_zintSymbol->scale = m_scale;
+        resetSymbol();
+        strcpy(m_zintSymbol->outfile, filename.toLatin1().left(255));
         QByteArray bstr = m_text.toUtf8();
-        QByteArray pstr = m_primaryMessage.left(99).toLatin1();
-        QByteArray fstr = filename.left(255).toLatin1();
-        strcpy(m_zintSymbol->primary, pstr.data());
-        strcpy(m_zintSymbol->outfile, fstr.data());
-        QByteArray fgcol = fg_colour_hash.right(6).toLatin1();
-        QByteArray bgcol = bg_colour_hash.right(6).toLatin1();
-        strcpy(m_zintSymbol->fgcolour, fgcol.data());
-        strcpy(m_zintSymbol->bgcolour, bgcol.data());
-        m_error = ZBarcode_Encode_and_Print(m_zintSymbol, (unsigned char*) bstr.data(), bstr.length(), 0);
-        if (m_error >= 5) {
+        m_error = ZBarcode_Encode_and_Print(m_zintSymbol, (unsigned char *) bstr.data(), bstr.length(), m_rotate_angle);
+        if (m_error >= ZINT_ERROR) {
             m_lastError = m_zintSymbol->errtxt;
             return false;
         } else {
             return true;
+        }
+    }
+
+    Qt::GlobalColor QZint::colourToQtColor(int colour) {
+        switch (colour) {
+            case 1: // Cyan
+                return Qt::cyan;
+                break;
+            case 2: // Blue
+                return Qt::blue;
+                break;
+            case 3: // Magenta
+                return Qt::magenta;
+                break;
+            case 4: // Red
+                return Qt::red;
+                break;
+            case 5: // Yellow
+                return Qt::yellow;
+                break;
+            case 6: // Green
+                return Qt::green;
+                break;
+            case 8: // White
+                return Qt::white;
+                break;
+            default:
+                return Qt::black;
+                break;
         }
     }
 
@@ -261,125 +411,163 @@ namespace Zint {
         struct zint_vector_hexagon *hex;
         struct zint_vector_circle *circle;
         struct zint_vector_string *string;
-        qreal radius;
+
+        (void)mode; /* Not currently used */
 
         encode();
 
-        QFont fontSmall(fontstyle);
-        fontSmall.setPixelSize(fontPixelSizeSmall);
-        QFont fontLarge(fontstyle);
-        fontLarge.setPixelSize(fontPixelSizeLarge);
+        painter.save();
 
-        if (m_error >= 5) {
-            // Display error message instead of barcode
-            fontLarge.setPointSize(14);
-            painter.setFont(fontLarge);
-            painter.drawText(paintRect, Qt::AlignCenter, m_lastError);
+        if (m_error >= ZINT_ERROR) {
+            painter.setRenderHint(QPainter::Antialiasing);
+            QFont font(fontStyleError, fontSizeError);
+            painter.setFont(font);
+            painter.drawText(paintRect, Qt::AlignCenter | Qt::TextWordWrap, m_lastError);
+            painter.restore();
             return;
         }
 
-        painter.save();
         painter.setClipRect(paintRect, Qt::IntersectClip);
 
         qreal xtr = paintRect.x();
         qreal ytr = paintRect.y();
         qreal scale;
-        
+
         qreal gwidth = m_zintSymbol->vector->width;
         qreal gheight = m_zintSymbol->vector->height;
 
-        if (paintRect.width() / gwidth < paintRect.height() / gheight) {
-            scale = paintRect.width() / gwidth;
+        if (m_rotate_angle == 90 || m_rotate_angle == 270) {
+            if (paintRect.width() / gheight < paintRect.height() / gwidth) {
+                scale = paintRect.width() / gheight;
+            } else {
+                scale = paintRect.height() / gwidth;
+            }
         } else {
-            scale = paintRect.height() / gheight;
+            if (paintRect.width() / gwidth < paintRect.height() / gheight) {
+                scale = paintRect.width() / gwidth;
+            } else {
+                scale = paintRect.height() / gheight;
+            }
         }
-        
+
         xtr += (qreal) (paintRect.width() - gwidth * scale) / 2.0;
         ytr += (qreal) (paintRect.height() - gheight * scale) / 2.0;
 
-        painter.setBackground(QBrush(m_bgColor));
-        painter.fillRect(paintRect, QBrush(m_bgColor));
-        
+        if (m_rotate_angle) {
+            painter.translate(paintRect.width() / 2.0, paintRect.height() / 2.0); // Need to rotate around centre
+            painter.rotate(m_rotate_angle);
+            painter.translate(-paintRect.width() / 2.0, -paintRect.height() / 2.0); // Undo
+        }
+
         painter.translate(xtr, ytr);
         painter.scale(scale, scale);
-        
+
+        QBrush bgBrush(m_bgColor);
+        painter.fillRect(QRectF(0, 0, gwidth, gheight), bgBrush);
+
         //Red square for diagnostics
         //painter.fillRect(QRect(0, 0, m_zintSymbol->vector->width, m_zintSymbol->vector->height), QBrush(QColor(255,0,0,255)));
 
-        QPen p;
-
-        p.setWidth(1);
-        p.setColor(m_fgColor);
-        painter.setPen(p);
-        painter.setRenderHint(QPainter::Antialiasing);
-        
         // Plot rectangles
         rect = m_zintSymbol->vector->rectangles;
-        while (rect) {
-            painter.fillRect(rect->x, rect->y, rect->width, rect->height, QBrush(m_fgColor));
-            rect = rect->next;
+        if (rect) {
+            QBrush brush(Qt::SolidPattern);
+            while (rect) {
+                if (rect->colour == -1) {
+                    brush.setColor(m_fgColor);
+                } else {
+                    brush.setColor(colourToQtColor(rect->colour));
+                }
+                painter.fillRect(QRectF(rect->x, rect->y, rect->width, rect->height), brush);
+                rect = rect->next;
+            }
         }
-        
+
         // Plot hexagons
         hex = m_zintSymbol->vector->hexagons;
-        while (hex) {
-            radius = hex->diameter / 2.0;
-            
-            QPainterPath pt;
-            pt.moveTo(hex->x, hex->y + (1.0 * radius));
-            pt.lineTo(hex->x + (0.86 * radius), hex->y + (0.5 * radius));
-            pt.lineTo(hex->x + (0.86 * radius), hex->y - (0.5 * radius));
-            pt.lineTo(hex->x, hex->y - (1.0 * radius));
-            pt.lineTo(hex->x - (0.86 * radius), hex->y - (0.5 * radius));
-            pt.lineTo(hex->x - (0.86 * radius), hex->y + (0.5 * radius));
-            pt.lineTo(hex->x, hex->y + (1.0 * radius));
-            painter.fillPath(pt, QBrush(m_fgColor));
-            
-            hex = hex->next;
+        if (hex) {
+            painter.setRenderHint(QPainter::Antialiasing);
+            QBrush fgBrush(m_fgColor);
+            qreal previous_diameter = 0.0, radius = 0.0, half_radius = 0.0, half_sqrt3_radius = 0.0;
+            while (hex) {
+                if (previous_diameter != hex->diameter) {
+                    previous_diameter = hex->diameter;
+                    radius = 0.5 * previous_diameter;
+                    half_radius = 0.25 * previous_diameter;
+                    half_sqrt3_radius = 0.43301270189221932338 * previous_diameter;
+                }
+
+                QPainterPath pt;
+                pt.moveTo(hex->x, hex->y + radius);
+                pt.lineTo(hex->x + half_sqrt3_radius, hex->y + half_radius);
+                pt.lineTo(hex->x + half_sqrt3_radius, hex->y - half_radius);
+                pt.lineTo(hex->x, hex->y - radius);
+                pt.lineTo(hex->x - half_sqrt3_radius, hex->y - half_radius);
+                pt.lineTo(hex->x - half_sqrt3_radius, hex->y + half_radius);
+                pt.lineTo(hex->x, hex->y + radius);
+                painter.fillPath(pt, fgBrush);
+
+                hex = hex->next;
+            }
         }
-        
+
         // Plot dots (circles)
         circle = m_zintSymbol->vector->circles;
-        while (circle) {
-            if (circle->colour) {
-                p.setColor(m_bgColor);
-                p.setWidth(0);
-                painter.setPen(p);
-                painter.setBrush(QBrush(m_bgColor));
-            } else {
-                p.setColor(m_fgColor);
-                p.setWidth(0);
-                painter.setPen(p);
-                painter.setBrush(QBrush(m_fgColor));
+        if (circle) {
+            painter.setRenderHint(QPainter::Antialiasing);
+            QPen p;
+            QBrush fgBrush(m_fgColor);
+            qreal previous_diameter = 0.0, radius = 0.0;
+            while (circle) {
+                if (previous_diameter != circle->diameter) {
+                    previous_diameter = circle->diameter;
+                    radius = 0.5 * previous_diameter;
+                }
+                if (circle->colour) { // Set means use background colour
+                    p.setColor(m_bgColor);
+                    p.setWidth(0);
+                    painter.setPen(p);
+                    painter.setBrush(bgBrush);
+                } else {
+                    p.setColor(m_fgColor);
+                    p.setWidth(0);
+                    painter.setPen(p);
+                    painter.setBrush(fgBrush);
+                }
+                painter.drawEllipse(QPointF(circle->x, circle->y), radius, radius);
+                circle = circle->next;
             }
-            painter.drawEllipse(QPointF(circle->x, circle->y), (double) circle->diameter / 2.0, (double) circle->diameter / 2.0);
-            circle = circle->next;
         }
-        
+
         // Plot text
         string = m_zintSymbol->vector->strings;
         if (string) {
-            painter.setFont(fontLarge);
+            painter.setRenderHint(QPainter::Antialiasing);
+            QPen p;
+            p.setColor(m_fgColor);
+            painter.setPen(p);
+            bool bold = (m_zintSymbol->output_options & BOLD_TEXT) && (!isExtendable() || (m_zintSymbol->output_options & SMALL_TEXT));
+            QFont font(fontStyle, -1 /*pointSize*/, bold ? QFont::Bold : -1);
+            while (string) {
+                font.setPixelSize(string->fsize);
+                painter.setFont(font);
+                QString content = QString::fromUtf8((const char *) string->text);
+                /* string->y is baseline of font */
+                if (string->halign == 1) { /* Left align */
+                    painter.drawText(QPointF(string->x, string->y), content);
+                } else {
+                    QFontMetrics fm(painter.fontMetrics());
+                    int width = fm.boundingRect(content).width();
+                    if (string->halign == 2) { /* Right align */
+                        painter.drawText(QPointF(string->x - width, string->y), content);
+                    } else { /* Centre align */
+                        painter.drawText(QPointF(string->x - (width / 2.0), string->y), content);
+                    }
+                }
+                string = string->next;
+            }
         }
-        QFontMetrics fm(fontLarge);
-        while (string) {
-            QString content = QString::fromUtf8((const char *) string->text, -1);
-            int width = fm.width(content, -1);
-            int height = fm.height();
-            painter.drawText(string->x - (width / 2.0), string->y - height, width, height, Qt::AlignHCenter | Qt::AlignBottom, content);
-            string = string->next;
-        }
-        
+
         painter.restore();
     }
-
-    const QString & QZint::lastError() const {
-        return m_lastError;
-    }
-
-    bool QZint::hasErrors() {
-        return m_lastError.length();
-    }
-
 }
-

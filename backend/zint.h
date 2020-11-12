@@ -37,36 +37,20 @@
 extern "C" {
 #endif /* __cplusplus */
 
-    struct zint_render_line {
-        float x, y, length, width;
-        struct zint_render_line *next; /* Pointer to next line */
-    };
-
     struct zint_vector_rect {
         float x, y, height, width;
         int colour;
         struct zint_vector_rect *next;
     };
-
-    struct zint_render_string {
-        float x, y, fsize;
-        float width; /* Suggested string width, may be 0 if none recommended */
-        int length;
-        unsigned char *text;
-        struct zint_render_string *next; /* Pointer to next character */
-    };
-
+    
     struct zint_vector_string {
         float x, y, fsize;
         float width; /* Suggested string width, may be 0 if none recommended */
         int length;
+        int rotation;
+        int halign; /* Horizontal alignment: 0 for centre (middle), 1 for left (start), 2 for right (end) */
         unsigned char *text;
         struct zint_vector_string *next; /* Pointer to next character */
-    };
-
-    struct zint_render_ring {
-        float x, y, radius, line_width;
-        struct zint_render_ring *next; /* Pointer to next ring */
     };
 
     struct zint_vector_circle {
@@ -75,22 +59,10 @@ extern "C" {
         struct zint_vector_circle *next; /* Pointer to next circle */
     };
 
-    struct zint_render_hexagon {
-        float x, y, height;
-        struct zint_render_hexagon *next; /* Pointer to next hexagon */
-    };
-
     struct zint_vector_hexagon {
         float x, y, diameter;
+        int rotation;
         struct zint_vector_hexagon *next; /* Pointer to next hexagon */
-    };
-
-    struct zint_render {
-        float width, height;
-        struct zint_render_line *lines; /* Pointer to first line */
-        struct zint_render_string *strings; /* Pointer to first string */
-        struct zint_render_ring *rings; /* Pointer to first ring */
-        struct zint_render_hexagon *hexagons; /* Pointer to first hexagon */
     };
 
     struct zint_vector {
@@ -108,7 +80,9 @@ extern "C" {
         int border_width;
         int output_options;
         char fgcolour[10];
+        char *fgcolor; // pointer to fgcolour
         char bgcolour[10];
+        char *bgcolor; // pointer to bgcolour
         char outfile[256];
         float scale;
         int option_1;
@@ -118,7 +92,7 @@ extern "C" {
         int fontsize;
         int input_mode;
         int eci;
-        unsigned char text[128];
+        unsigned char text[128]; /* UTF-8 */
         int rows;
         int width;
         char primary[128];
@@ -128,20 +102,23 @@ extern "C" {
         unsigned char *bitmap;
         int bitmap_width;
         int bitmap_height;
+        unsigned char *alphamap;
         unsigned int bitmap_byte_length;
         float dot_size;
         struct zint_vector *vector;
-        struct zint_render *rendered;
         int debug;
+        int warn_level;
     };
 
 #define ZINT_VERSION_MAJOR      2
-#define ZINT_VERSION_MINOR      7
+#define ZINT_VERSION_MINOR      9
 #define ZINT_VERSION_RELEASE    1
+#define ZINT_VERSION_BUILD      9 /* Set to 0 before release, set to 9 after release */
 
     /* Tbarcode 7 codes */
 #define BARCODE_CODE11          1
-#define BARCODE_C25MATRIX       2
+#define BARCODE_C25STANDARD     2
+#define BARCODE_C25MATRIX       2 // Legacy
 #define BARCODE_C25INTER        3
 #define BARCODE_C25IATA         4
 #define BARCODE_C25LOGIC        6
@@ -150,7 +127,8 @@ extern "C" {
 #define BARCODE_EXCODE39        9
 #define BARCODE_EANX            13
 #define BARCODE_EANX_CHK        14
-#define BARCODE_EAN128          16
+#define BARCODE_GS1_128         16
+#define BARCODE_EAN128          16 // Legacy
 #define BARCODE_CODABAR         18
 #define BARCODE_CODE128         20
 #define BARCODE_DPLEIT          21
@@ -159,9 +137,12 @@ extern "C" {
 #define BARCODE_CODE49          24
 #define BARCODE_CODE93          25
 #define BARCODE_FLAT            28
-#define BARCODE_RSS14           29
-#define BARCODE_RSS_LTD         30
-#define BARCODE_RSS_EXP         31
+#define BARCODE_DBAR_OMN        29
+#define BARCODE_RSS14           29 // Legacy
+#define BARCODE_DBAR_LTD        30
+#define BARCODE_RSS_LTD         30 // Legacy
+#define BARCODE_DBAR_EXP        31
+#define BARCODE_RSS_EXP         31 // Legacy
 #define BARCODE_TELEPEN         32
 #define BARCODE_UPCA            34
 #define BARCODE_UPCA_CHK        35
@@ -175,7 +156,8 @@ extern "C" {
 #define BARCODE_PZN             52
 #define BARCODE_PHARMA_TWO      53
 #define BARCODE_PDF417          55
-#define BARCODE_PDF417TRUNC     56
+#define BARCODE_PDF417COMP      56
+#define BARCODE_PDF417TRUNC     56 // Legacy
 #define BARCODE_MAXICODE        57
 #define BARCODE_QRCODE          58
 #define BARCODE_CODE128B        60
@@ -192,12 +174,16 @@ extern "C" {
 #define BARCODE_NVE18           75
 #define BARCODE_JAPANPOST       76
 #define BARCODE_KOREAPOST       77
-#define BARCODE_RSS14STACK      79
-#define BARCODE_RSS14STACK_OMNI 80
-#define BARCODE_RSS_EXPSTACK    81
+#define BARCODE_DBAR_STK        79
+#define BARCODE_RSS14STACK      79 // Legacy
+#define BARCODE_DBAR_OMNSTK     80
+#define BARCODE_RSS14STACK_OMNI 80 // Legacy
+#define BARCODE_DBAR_EXPSTK     81
+#define BARCODE_RSS_EXPSTACK    81 // Legacy
 #define BARCODE_PLANET          82
 #define BARCODE_MICROPDF417     84
-#define BARCODE_ONECODE         85
+#define BARCODE_USPS_IMAIL      85
+#define BARCODE_ONECODE         85 // Legacy
 #define BARCODE_PLESSEY         86
 
     /* Tbarcode 8 codes */
@@ -206,6 +192,7 @@ extern "C" {
 #define BARCODE_KIX             90
 #define BARCODE_AZTEC           92
 #define BARCODE_DAFT            93
+#define BARCODE_DPD             96
 #define BARCODE_MICROQR         97
 
     /* Tbarcode 9 codes */
@@ -229,15 +216,22 @@ extern "C" {
 #define BARCODE_AZRUNE          128
 #define BARCODE_CODE32          129
 #define BARCODE_EANX_CC         130
-#define BARCODE_EAN128_CC       131
-#define BARCODE_RSS14_CC        132
-#define BARCODE_RSS_LTD_CC      133
-#define BARCODE_RSS_EXP_CC      134
+#define BARCODE_GS1_128_CC      131
+#define BARCODE_EAN128_CC       131 // Legacy
+#define BARCODE_DBAR_OMN_CC     132
+#define BARCODE_RSS14_CC        132 // Legacy
+#define BARCODE_DBAR_LTD_CC     133
+#define BARCODE_RSS_LTD_CC      133 // Legacy
+#define BARCODE_DBAR_EXP_CC     134
+#define BARCODE_RSS_EXP_CC      134 // Legacy
 #define BARCODE_UPCA_CC         135
 #define BARCODE_UPCE_CC         136
-#define BARCODE_RSS14STACK_CC   137
-#define BARCODE_RSS14_OMNI_CC   138
-#define BARCODE_RSS_EXPSTACK_CC 139
+#define BARCODE_DBAR_STK_CC     137
+#define BARCODE_RSS14STACK_CC   137 // Legacy
+#define BARCODE_DBAR_OMNSTK_CC  138
+#define BARCODE_RSS14_OMNI_CC   138 // Legacy
+#define BARCODE_DBAR_EXPSTK_CC  139
+#define BARCODE_RSS_EXPSTACK_CC 139 // Legacy
 #define BARCODE_CHANNEL         140
 #define BARCODE_CODEONE         141
 #define BARCODE_GRIDMATRIX      142
@@ -256,6 +250,7 @@ extern "C" {
 #define CMYK_COLOUR             128
 #define BARCODE_DOTTY_MODE      256
 #define GS1_GS_SEPARATOR        512
+#define OUT_BUFFER_INTERMEDIATE 1024
 
 // Input data types
 #define DATA_MODE               0
@@ -270,18 +265,23 @@ extern "C" {
 // QR, Han Xin, Grid Matrix specific options (option_3)
 #define ZINT_FULL_MULTIBYTE     200
 
+// Ultracode specific option (option_3)
+#define ULTRA_COMPRESSION       128
+
 // Warning and error conditions
 #define ZINT_WARN_INVALID_OPTION        2
 #define ZINT_WARN_USES_ECI              3
+#define ZINT_WARN_NONCOMPLIANT          4
+#define ZINT_ERROR                      5 /* Warn/error marker, not returned */
 #define ZINT_ERROR_TOO_LONG             5
-#define ZINT_ERROR_INVALID_DATA	        6
+#define ZINT_ERROR_INVALID_DATA         6
 #define ZINT_ERROR_INVALID_CHECK        7
 #define ZINT_ERROR_INVALID_OPTION       8
 #define ZINT_ERROR_ENCODING_PROBLEM     9
 #define ZINT_ERROR_FILE_ACCESS          10
 #define ZINT_ERROR_MEMORY               11
 
-// Raster file types
+// File types
 #define OUT_BUFFER              0
 #define OUT_SVG_FILE            10
 #define OUT_EPS_FILE            20
@@ -293,9 +293,26 @@ extern "C" {
 #define OUT_JPG_FILE            180
 #define OUT_TIF_FILE            200
 
+// Warning warn
+#define WARN_DEFAULT     0
+#define WARN_ZPL_COMPAT  1
+#define WARN_FAIL_ALL    2
+
+// Capability flags
+#define ZINT_CAP_HRT            0x0001
+#define ZINT_CAP_STACKABLE      0x0002
+#define ZINT_CAP_EXTENDABLE     0x0004
+#define ZINT_CAP_COMPOSITE      0x0008
+#define ZINT_CAP_ECI            0x0010
+#define ZINT_CAP_GS1            0x0020
+#define ZINT_CAP_DOTTY          0x0040
+#define ZINT_CAP_FIXED_RATIO    0x0100 /* Aspect ratio */
+#define ZINT_CAP_READER_INIT    0x0200
+#define ZINT_CAP_FULL_MULTIBYTE 0x0400
+
 // Debug flags
-#define ZINT_DEBUG_PRINT    1
-#define ZINT_DEBUG_TEST     2
+#define ZINT_DEBUG_PRINT        1
+#define ZINT_DEBUG_TEST         2
 
 #if defined(__WIN32__) || defined(_WIN32) || defined(WIN32) || defined(_MSC_VER)
 #if defined (DLL_EXPORT) || defined(PIC) || defined(_USRDLL)
@@ -327,6 +344,7 @@ extern "C" {
     ZINT_EXTERN int ZBarcode_Encode_File_and_Buffer_Vector(struct zint_symbol *symbol, char *filename, int rotate_angle);
 
     ZINT_EXTERN int ZBarcode_ValidID(int symbol_id);
+    ZINT_EXTERN unsigned int ZBarcode_Cap(int symbol_id, unsigned int cap_flag);
     ZINT_EXTERN int ZBarcode_Version();
 
 #ifdef __cplusplus
@@ -334,4 +352,3 @@ extern "C" {
 #endif /* __cplusplus */
 
 #endif /* ZINT_H */
-

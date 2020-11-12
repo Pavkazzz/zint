@@ -31,7 +31,6 @@
  */
 /* vim: set ts=4 sw=4 et : */
 
-#include <string.h>
 #include <stdio.h>
 #ifdef _MSC_VER
 #include <malloc.h>
@@ -69,12 +68,25 @@ static void itostr(char ai_string[], int ai_value) {
     strcat(ai_string, ")");
 }
 
+/* Returns the number of times a character occurs in a string */
+static int ustrchr_cnt(const unsigned char string[], const size_t length, const unsigned char c) {
+    int count = 0;
+    unsigned int i;
+    for (i = 0; i < length; i++) {
+        if (string[i] == c) {
+            count++;
+        }
+    }
+    return count;
+}
+
 INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[], const size_t src_len, char reduced[]) {
     int i, j, last_ai, ai_latch;
     char ai_string[7]; /* 6 char max "(NNNN)" */
     int bracket_level, max_bracket_level, ai_length, max_ai_length, min_ai_length;
     int ai_count;
     int error_latch;
+    int error_value;
 #ifdef _MSC_VER
     int *ai_value;
     int *ai_location;
@@ -105,11 +117,19 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
             strcpy(symbol->errtxt, "251: Control characters are not supported by GS1");
             return ZINT_ERROR_INVALID_DATA;
         }
+        if (source[i] == 127) {
+            strcpy(symbol->errtxt, "263: DEL characters are not supported by GS1");
+            return ZINT_ERROR_INVALID_DATA;
+        }
     }
 
     if (source[0] != '[') {
         strcpy(symbol->errtxt, "252: Data does not start with an AI");
-        return ZINT_ERROR_INVALID_DATA;
+        if (symbol->warn_level != WARN_ZPL_COMPAT) {
+            return ZINT_ERROR_INVALID_DATA;
+        } else {
+            error_value = ZINT_WARN_NONCOMPLIANT;
+        }
     }
 
     /* Check the position of the brackets */
@@ -120,6 +140,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
     min_ai_length = 5;
     j = 0;
     ai_latch = 0;
+    error_value = 0;
     for (i = 0; i < (int) src_len; i++) {
         ai_length += j;
         if (((j == 1) && (source[i] != ']')) && ((source[i] < '0') || (source[i] > '9'))) {
@@ -490,7 +511,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
         }
 
         if (ai_value[i] == 253) { // GDTI
-            if ((data_length[i] < 14) || (data_length[i] > 30)) {
+            if ((data_length[i] < 13) || (data_length[i] > 30)) {
                 error_latch = 1;
             } else {
                 error_latch = 0;
@@ -498,6 +519,7 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
         }
 
         if (ai_value[i] == 255) { // GCN
+
             if ((data_length[i] < 12) || (data_length[i] > 25)) {
                 error_latch = 1;
             } else {
@@ -646,20 +668,27 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
             itostr(ai_string, ai_value[i]);
             strcpy(symbol->errtxt, "259: Invalid data length for AI ");
             strcat(symbol->errtxt, ai_string);
-            return ZINT_ERROR_INVALID_DATA;
+            if (symbol->warn_level != WARN_ZPL_COMPAT) {
+                return ZINT_ERROR_INVALID_DATA;
+            } else {
+                error_value = ZINT_WARN_NONCOMPLIANT;
+            }
         }
 
         if (error_latch == 2) {
             itostr(ai_string, ai_value[i]);
             strcpy(symbol->errtxt, "260: Invalid AI value ");
             strcat(symbol->errtxt, ai_string);
-            return ZINT_ERROR_INVALID_DATA;
+            if (symbol->warn_level != WARN_ZPL_COMPAT) {
+                return ZINT_ERROR_INVALID_DATA;
+            } else {
+                error_value = ZINT_WARN_NONCOMPLIANT;
+            }
         }
     }
 
     /* Resolve AI data - put resulting string in 'reduced' */
     j = 0;
-    last_ai = 0;
     ai_latch = 1;
     for (i = 0; i < (int) src_len; i++) {
         if ((source[i] != '[') && (source[i] != ']')) {
@@ -675,12 +704,12 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
             ai_string[2] = '\0';
             last_ai = atoi(ai_string);
             ai_latch = 0;
-            /* The following values from "GS-1 General Specification version 8.0 issue 2, May 2008"
-            figure 5.4.8.2.1 - 1 "Element Strings with Pre-Defined Length Using Application Identifiers" */
+            /* The following values from "GS-1 General Specification Release 20.0"
+            figure 7.8.4-2 "Element Strings with Predefined Length Using Application Identifiers" */
             if (
                     ((last_ai >= 0) && (last_ai <= 4))
                     || ((last_ai >= 11) && (last_ai <= 20))
-                    || (last_ai == 23) /* legacy support - see 5.3.8.2.2 */
+                    || (last_ai == 23) /* legacy support */
                     || ((last_ai >= 31) && (last_ai <= 36))
                     || (last_ai == 41)
                     ) {
@@ -692,5 +721,5 @@ INTERNAL int gs1_verify(struct zint_symbol *symbol, const unsigned char source[]
     reduced[j] = '\0';
 
     /* the character '[' in the reduced string refers to the FNC1 character */
-    return 0;
+    return error_value;
 }

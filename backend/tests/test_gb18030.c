@@ -1,6 +1,6 @@
 /*
     libzint - the open source barcode library
-    Copyright (C) 2008-2020 Robin Stuart <rstuart114@gmail.com>
+    Copyright (C) 2019 - 2020 Robin Stuart <rstuart114@gmail.com>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -37,8 +37,7 @@
 // The version of GB18030.TXT is libiconv-1.11/GB18030.TXT taken from https://haible.de/bruno/charsets/conversion-tables/GB18030.html
 // The generated file backend/tests/test_gb18030_tab.h does not include U+10000..10FFFF codepoints to save space.
 // See also backend/tests/tools/data/GB18030.TXT.README and backend/tests/tools/gen_test_tab.php.
-static int gb18030_wctomb_zint2(unsigned int* r1, unsigned int* r2, unsigned int wc)
-{
+static int gb18030_wctomb_zint2(unsigned int *r1, unsigned int *r2, unsigned int wc) {
     unsigned int c;
     // GB18030 two-byte extension (libiconv-1.16/lib/gb18030ext.h)
     if (wc == 0x1E3F) { // GB 18030-2005 change, was PUA U+E7C7 below, see Table 3-39, p.111, Lunde 2nd ed.
@@ -123,8 +122,8 @@ static int gb18030_wctomb_zint2(unsigned int* r1, unsigned int* r2, unsigned int
     return 0;
 }
 
-static void test_gb18030_wctomb_zint(void)
-{
+static void test_gb18030_wctomb_zint(void) {
+
     testStart("");
 
     int ret, ret2;
@@ -147,18 +146,18 @@ static void test_gb18030_wctomb_zint(void)
     testFinish();
 }
 
-static void test_gb18030_utf8tomb(void)
-{
+static void test_gb18030_utf8tomb(int index) {
+
     testStart("");
 
     int ret;
     struct item {
-        unsigned char* data;
+        char *data;
         int length;
         int ret;
         size_t ret_length;
         unsigned int expected_gbdata[30];
-        char* comment;
+        char *comment;
     };
     // é U+00E9 in ISO 8859-1 plus other ISO 8859 (but not in ISO 8859-7 or ISO 8859-11), Win 1250 plus other Win, in GB 18030 0xA8A6, UTF-8 C3A9
     // β U+03B2 in ISO 8859-7 Greek (but not other ISO 8859 or Win page), in GB 18030 0xA6C2, UTF-8 CEB2
@@ -188,14 +187,16 @@ static void test_gb18030_utf8tomb(void)
 
     for (int i = 0; i < data_size; i++) {
 
-        int length = data[i].length == -1 ? strlen(data[i].data) : data[i].length;
+        if (index != -1 && i != index) continue;
+
+        int length = data[i].length == -1 ? (int) strlen(data[i].data) : data[i].length;
         size_t ret_length = length;
 
-        ret = gb18030_utf8tomb(&symbol, data[i].data, &ret_length, gbdata);
+        ret = gb18030_utf8tomb(&symbol, (unsigned char *) data[i].data, &ret_length, gbdata);
         assert_equal(ret, data[i].ret, "i:%d ret %d != %d (%s)\n", i, ret, data[i].ret, symbol.errtxt);
         if (ret == 0) {
             assert_equal(ret_length, data[i].ret_length, "i:%d ret_length %zu != %zu\n", i, ret_length, data[i].ret_length);
-            for (int j = 0; j < ret_length; j++) {
+            for (int j = 0; j < (int) ret_length; j++) {
                 assert_equal(gbdata[j], data[i].expected_gbdata[j], "i:%d gbdata[%d] 0x%04X != 0x%04X\n", i, j, gbdata[j], data[i].expected_gbdata[j]);
             }
         }
@@ -204,20 +205,20 @@ static void test_gb18030_utf8tomb(void)
     testFinish();
 }
 
-static void test_gb18030_utf8tosb(void)
-{
+static void test_gb18030_utf8tosb(int index) {
+
     testStart("");
 
     int ret;
     struct item {
         int eci;
         int full_multibyte;
-        unsigned char* data;
+        char *data;
         int length;
         int ret;
         size_t ret_length;
         unsigned int expected_gbdata[30];
-        char* comment;
+        char *comment;
     };
     // é U+00E9 in ISO 8859-1 0xE9, Win 1250 plus other Win, in HANXIN Chinese mode first byte range 0x81..FE
     // β U+03B2 in ISO 8859-7 Greek 0xE2 (but not other ISO 8859 or Win page)
@@ -261,14 +262,16 @@ static void test_gb18030_utf8tosb(void)
 
     for (int i = 0; i < data_size; i++) {
 
-        int length = data[i].length == -1 ? strlen(data[i].data) : data[i].length;
+        if (index != -1 && i != index) continue;
+
+        int length = data[i].length == -1 ? (int) strlen(data[i].data) : data[i].length;
         size_t ret_length = length;
 
-        ret = gb18030_utf8tosb(data[i].eci, data[i].data, &ret_length, gbdata, data[i].full_multibyte);
+        ret = gb18030_utf8tosb(data[i].eci, (unsigned char *) data[i].data, &ret_length, gbdata, data[i].full_multibyte);
         assert_equal(ret, data[i].ret, "i:%d ret %d != %d\n", i, ret, data[i].ret);
         if (ret == 0) {
             assert_equal(ret_length, data[i].ret_length, "i:%d ret_length %zu != %zu\n", i, ret_length, data[i].ret_length);
-            for (int j = 0; j < ret_length; j++) {
+            for (int j = 0; j < (int) ret_length; j++) {
                 assert_equal(gbdata[j], data[i].expected_gbdata[j], "i:%d gbdata[%d] %04X != %04X\n", i, j, gbdata[j], data[i].expected_gbdata[j]);
             }
         }
@@ -277,19 +280,18 @@ static void test_gb18030_utf8tosb(void)
     testFinish();
 }
 
-static void test_gb18030_cpy(void)
-{
+static void test_gb18030_cpy(int index) {
+
     testStart("");
 
-    int ret;
     struct item {
         int full_multibyte;
-        unsigned char* data;
+        char *data;
         int length;
         int ret;
         size_t ret_length;
         unsigned int expected_gbdata[30];
-        char* comment;
+        char *comment;
     };
     // s/\/\*[ 0-9]*\*\//\=printf("\/*%3d*\/", line(".") - line("'<"))
     struct item data[] = {
@@ -311,12 +313,14 @@ static void test_gb18030_cpy(void)
 
     for (int i = 0; i < data_size; i++) {
 
-        int length = data[i].length == -1 ? strlen(data[i].data) : data[i].length;
+        if (index != -1 && i != index) continue;
+
+        int length = data[i].length == -1 ? (int) strlen(data[i].data) : data[i].length;
         size_t ret_length = length;
 
-        gb18030_cpy(data[i].data, &ret_length, gbdata, data[i].full_multibyte);
+        gb18030_cpy((unsigned char *) data[i].data, &ret_length, gbdata, data[i].full_multibyte);
         assert_equal(ret_length, data[i].ret_length, "i:%d ret_length %zu != %zu\n", i, ret_length, data[i].ret_length);
-        for (int j = 0; j < ret_length; j++) {
+        for (int j = 0; j < (int) ret_length; j++) {
             assert_equal(gbdata[j], data[i].expected_gbdata[j], "i:%d gbdata[%d] %04X != %04X\n", i, j, gbdata[j], data[i].expected_gbdata[j]);
         }
     }
@@ -324,12 +328,16 @@ static void test_gb18030_cpy(void)
     testFinish();
 }
 
-int main()
-{
-    test_gb18030_wctomb_zint();
-    test_gb18030_utf8tomb();
-    test_gb18030_utf8tosb();
-    test_gb18030_cpy();
+int main(int argc, char *argv[]) {
+
+    testFunction funcs[] = { /* name, func, has_index, has_generate, has_debug */
+        { "test_gb18030_wctomb_zint", test_gb18030_wctomb_zint, 0, 0, 0 },
+        { "test_gb18030_utf8tomb", test_gb18030_utf8tomb, 1, 0, 0 },
+        { "test_gb18030_utf8tosb", test_gb18030_utf8tosb, 1, 0, 0 },
+        { "test_gb18030_cpy", test_gb18030_cpy, 1, 0, 0 },
+    };
+
+    testRun(argc, argv, funcs, ARRAY_SIZE(funcs));
 
     testReport();
 

@@ -18,17 +18,20 @@ FORMS += extData.ui \
          extExport.ui \
          extSequence.ui \
          grpAztec.ui \
+         grpC11.ui \
          grpC128.ui \
          grpC16k.ui \
          grpC39.ui \
          grpC49.ui \
          grpChannel.ui \
+         grpCodabar.ui \
          grpCodeOne.ui \
          grpCodablockF.ui \
          grpDBExtend.ui \
          grpDM.ui \
          grpGrid.ui \
          grpHX.ui \
+         grpLOGMARS.ui \
          grpMaxicode.ui \
          grpMicroPDF.ui \
          grpMQR.ui \
@@ -36,6 +39,9 @@ FORMS += extData.ui \
          grpPDF417.ui \
          grpQR.ui \
          grpRMQR.ui \
+         grpUPCA.ui \
+         grpUPCEAN.ui \
+         grpVIN.ui \
          mainWindow.ui \
          grpDotCode.ui
 
@@ -49,6 +55,8 @@ SOURCES += barcodeitem.cpp \
 TRANSLATIONS = frontend_de.ts
 
 RESOURCES += resources.qrc
+
+RC_FILE += res/qtZint.rc
 
 # Static target following http://qt-project.org/wiki/Build_Standalone_Qt_Application_for_Windows
 CONFIG += static
