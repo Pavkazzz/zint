@@ -55,11 +55,7 @@
 #define ustrcpy(target, source) strcpy((char *) (target), (const char *) (source))
 #define ustrcat(target, source) strcat((char *) (target), (const char *) (source))
 
-#if defined(__GNUC__) && !defined(_WIN32) && !defined(ZINT_TEST)
-#define INTERNAL __attribute__ ((visibility ("hidden")))
-#else
 #define INTERNAL
-#endif
 
 #if defined(ZINT_TEST)
 #define STATIC_UNLESS_ZINT_TEST
@@ -120,7 +116,7 @@ extern "C" {
     INTERNAL void pn_define_mode(char *mode, const unsigned int data[], const size_t length, const int debug,
                     unsigned int state[], const char mode_types[], const int num_modes,
                     pn_head_costs head_costs, pn_switch_cost switch_cost, pn_eod_cost eod_cost, pn_cur_cost cur_cost);
-    
+
     INTERNAL int colour_to_red(int colour);
     INTERNAL int colour_to_green(int colour);
     INTERNAL int colour_to_blue(int colour);
